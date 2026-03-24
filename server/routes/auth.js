@@ -118,9 +118,14 @@ router.post('/login', async (req, res) => {
     }
 });
 
+const connectDB = require('../utils/db');
+
 // POST /api/auth/google
 router.post('/google', async (req, res) => {
     try {
+        // Ensure DB is connected before proceeding
+        await connectDB();
+
         const { googlePayload, role } = req.body;
         console.log("Backend received Google auth request:", { role, hasPayload: !!googlePayload });
 
@@ -144,11 +149,6 @@ router.post('/google', async (req, res) => {
                 bio: `Logged in via Google as a ${role}`
             });
             await user.save();
-        } else {
-            // Optional: update role if changed, but we will respect the original registration role.
-            // If we MUST force the selected role:
-            // user.role = role || user.role;
-            // await user.save();
         }
 
         if (user.isBlocked) {
@@ -176,9 +176,20 @@ router.post('/google', async (req, res) => {
 
     } catch (error) {
         console.error("CRITICAL ERROR in /google route:", error);
+        
+        // Specific message for Mongoose buffering timeouts (often IP Whitelist issues)
+        if (error.message.includes('buffering timed out')) {
+            return res.status(503).json({ 
+                message: 'Database connection timeout', 
+                details: 'The server was unable to connect to the database. Please ensure your MongoDB Atlas IP Whitelist is set to allow connections (0.0.0.0/0).',
+                originalError: error.message
+            });
+        }
+
         res.status(500).json({ message: 'Server error during Google authentication', details: error.message });
     }
 });
+
 
 // GET /api/auth/me (Get Profile from Token)
 router.get('/me', async (req, res) => {

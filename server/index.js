@@ -33,34 +33,25 @@ app.get('/api/db-status', require('./api/db_status'));
 
 // Database Connection
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URL;
+const connectDB = require('./utils/db');
 
-if (!MONGO_URI) {
-    console.error("MONGO_URL is missing in .env.local!");
-    process.exit(1);
-}
-
+// In production (Vercel), we don't call app.listen() at the top level
+// as Vercel handles the serverless execution.
 if (process.env.NODE_ENV !== 'production') {
-    await mongoose.connect(MONGO_URI, {
-        serverApi: {
-            version: '1',
-            strict: true,
-            deprecationErrors: true,
-        }
-    })
+    connectDB()
         .then(() => {
-            console.log("Connected to MongoDB");
             app.listen(PORT, '0.0.0.0', () => {
                 console.log(`Server running on port ${PORT}`);
             });
         })
         .catch((error) => {
-            console.error("Error connecting to MongoDB:", error.message);
+            console.error("Critical: Server failed to start due to DB issue:", error.message);
         });
 } else {
-    // In production (Vercel), we connect outside or rely on serverless handled connection
-    await mongoose.connect(MONGO_URI).catch(err => console.error("MongoDB production error:", err));
+    // Production / Serverless: Just trigger the connection (it's a singleton)
+    connectDB().catch(err => console.error("Vercel production DB connection triggered:", err.message));
 }
+
 
 module.exports = app;
 
