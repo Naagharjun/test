@@ -59,8 +59,16 @@ if (process.env.NODE_ENV !== 'production') {
         });
 } else {
     // In production (Vercel), we connect outside or rely on serverless handled connection
-    await mongoose.connect(MONGO_URI).catch(err => console.error("MongoDB production error:", err));
+async function connectDB() {
+  try {
+    await mongoose.connect(MONGO_URI);
+    console.log("✅ MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB error:", err);
+  }
 }
+
+connectDB();}
 
 module.exports = app;
 
