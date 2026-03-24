@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mentor, ConnectionRequest } from '../types';
 import { api } from '../services/api';
+import { calculateBadges } from '../utils/badges';
+import BadgeList from './BadgeList';
 import UserAvatar from './UserAvatar';
 
 /**
@@ -20,12 +22,21 @@ const isMentorOnline = (mentor: Mentor): boolean => {
     return isOnline;
 };
 
-const MenteeDashboard: React.FC<{ user: User | null }> = ({ user }) => {
+const MenteeDashboard: React.FC<{
+    user: User | null;
+    onTabChange: (tab: string) => void;
+    onSelectConnection: (id: string) => void;
+}> = ({ user, onTabChange, onSelectConnection }) => {
     const [mentors, setMentors] = useState<Mentor[]>([]);
     const [requests, setRequests] = useState<ConnectionRequest[]>([]);
     const [selectedMentorId, setSelectedMentorId] = useState('');
     const [isRequesting, setIsRequesting] = useState(false);
     const [requestSuccess, setRequestSuccess] = useState('');
+    const [reviewingMentor, setReviewingMentor] = useState<{ id: string, name: string } | null>(null);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    const [reviewSuccess, setReviewSuccess] = useState('');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -88,10 +99,61 @@ const MenteeDashboard: React.FC<{ user: User | null }> = ({ user }) => {
         }
     };
 
+    const handleSubmitReview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !reviewingMentor) return;
+
+        setIsSubmittingReview(true);
+        try {
+            await api.reviews.submitReview({
+                mentorId: reviewingMentor.id,
+                menteeId: user.id,
+                menteeName: user.name,
+                rating: reviewRating,
+                comment: reviewComment
+            });
+            setReviewSuccess('Review submitted successfully!');
+            setTimeout(() => {
+                setReviewingMentor(null);
+                setReviewSuccess('');
+                setReviewComment('');
+            }, 2000);
+        } catch (err: any) {
+            console.error("Failed to submit review", err);
+            alert(err.message || "Failed to submit review");
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    };
+
     const acceptedRequests = requests.filter(r => r.status === 'accepted');
+    const badges = user ? calculateBadges(user, acceptedRequests.length) : [];
+
+    // Calculate actual skill proficiency average
+    const calculateProficiency = () => {
+        if (!user || !user.skills || user.skills.length === 0) return 0;
+        const total = user.skills.reduce((acc, skill) => {
+            if (skill.proficiency === 'Advanced') return acc + 100;
+            if (skill.proficiency === 'Intermediate') return acc + 60;
+            return acc + 20;
+        }, 0);
+        return Math.round(total / user.skills.length);
+    };
+    const skillProficiency = calculateProficiency();
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Badges Header */}
+            {badges.length > 0 && (
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-6 shadow-xl shadow-purple-500/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                    <div>
+                        <h4 className="text-white font-black text-xl mb-1 tracking-tight">Mentee Progress</h4>
+                        <p className="text-purple-100 text-xs font-bold uppercase tracking-widest opacity-80">You're on the path to mastery, {user?.name.split(' ')[0]}!</p>
+                    </div>
+                    <BadgeList badges={badges} />
+                </div>
+            )}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all group">
@@ -119,8 +181,8 @@ const MenteeDashboard: React.FC<{ user: User | null }> = ({ user }) => {
                         <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">👥</div>
                     </div>
                     <div className="flex items-end justify-between">
-                        <h3 className="text-4xl font-black text-slate-900 tracking-tight">{Math.min(100, Math.round(40 + (acceptedRequests.length * 1.5) * 2))}%</h3>
-                        <span className="text-[10px] font-black px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full uppercase tracking-wider">Growing Fast</span>
+                        <h3 className="text-4xl font-black text-slate-900 tracking-tight">{skillProficiency}%</h3>
+                        <span className="text-[10px] font-black px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full uppercase tracking-wider">{skillProficiency > 70 ? 'Expert' : skillProficiency > 40 ? 'Growing Fast' : 'Just Starting'}</span>
                     </div>
                 </div>
             </div>
@@ -138,26 +200,45 @@ const MenteeDashboard: React.FC<{ user: User | null }> = ({ user }) => {
 
                     <div className="space-y-5">
                         {acceptedRequests.length === 0 ? (
-                            <p className="text-sm text-slate-400 font-medium py-8 text-center border-2 border-dashed border-slate-100 rounded-3xl">No upcoming sessions. Book a mentor to get started.</p>
+                            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-100 rounded-[2.5rem] bg-slate-50/30">
+                                <span className="text-4xl mb-4 text-blue-600/20">🔍</span>
+                                <p className="text-sm text-slate-500 font-bold mb-6">No upcoming sessions. Ready to learn?</p>
+                                <button
+                                    onClick={() => onTabChange('mentors')}
+                                    className="px-8 py-3 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-600/20 hover:bg-blue-500 transition-all uppercase tracking-widest text-[10px] active:scale-95"
+                                >
+                                    Find Your Perfect Mentor
+                                </button>
+                            </div>
                         ) : (
                             acceptedRequests.slice(0, 3).map((r) => {
                                 const d = new Date(r.timestamp);
                                 return (
                                     <div key={r.id} className="group flex gap-5 p-5 rounded-3xl hover:bg-white transition-all border border-transparent hover:border-slate-100 hover:shadow-lg hover:shadow-slate-200/30">
-                                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex flex-col items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                                            <span className="text-[10px] font-black leading-none uppercase mb-1 opacity-70">
-                                                {d.toLocaleDateString('en-US', { month: 'short' })}
-                                            </span>
-                                            <span className="text-2xl font-black leading-none">
-                                                {d.getDate()}
-                                            </span>
+                                        <div className="relative">
+                                            <UserAvatar name={r.mentorName} role="mentor" size={64} className="rounded-2xl shadow-lg group-hover:scale-105 transition-transform" />
+                                            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white text-[10px] font-black shadow-lg border-2 border-white">
+                                                {new Date(r.timestamp).getDate()}
+                                            </div>
                                         </div>
                                         <div className="flex-1 py-1">
                                             <h4 className="text-base font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">Mentorship Session</h4>
                                             <p className="text-xs font-bold text-slate-400 mt-1 mb-3 uppercase tracking-wider">with {r.mentorName} • {d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                                             <div className="flex gap-3">
-                                                <button className="px-5 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl hover:bg-blue-700 transition-all uppercase tracking-[0.1em] shadow-lg shadow-blue-500/20 active:scale-95">
-                                                    Join Live
+                                                <button
+                                                    onClick={() => {
+                                                        onSelectConnection(r.id);
+                                                        onTabChange('chat');
+                                                    }}
+                                                    className="px-5 py-2 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-xl hover:bg-emerald-200 transition-all uppercase tracking-[0.1em] active:scale-95"
+                                                >
+                                                    Message
+                                                </button>
+                                                <button
+                                                    onClick={() => setReviewingMentor({ id: r.mentorId, name: r.mentorName })}
+                                                    className="px-5 py-2 bg-amber-100 text-amber-700 text-[10px] font-black rounded-xl hover:bg-amber-200 transition-all uppercase tracking-[0.1em] active:scale-95"
+                                                >
+                                                    Review
                                                 </button>
                                                 <button
                                                     onClick={() => handleCancel(r.id)}
@@ -246,6 +327,68 @@ const MenteeDashboard: React.FC<{ user: User | null }> = ({ user }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Review Modal */}
+            {reviewingMentor && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2.5rem] max-w-md w-full shadow-2xl overflow-hidden">
+                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Review {reviewingMentor.name}</h3>
+                                <p className="text-sm font-bold text-slate-400 mt-1">Share your experience with the community</p>
+                            </div>
+                            <button onClick={() => setReviewingMentor(null)} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">✕</button>
+                        </div>
+
+                        <form onSubmit={handleSubmitReview} className="p-8 space-y-6">
+                            {reviewSuccess ? (
+                                <div className="py-12 text-center space-y-4">
+                                    <div className="text-6xl">✨</div>
+                                    <h4 className="text-2xl font-black text-slate-900">{reviewSuccess}</h4>
+                                    <p className="text-slate-500 font-bold">Your feedback helps others grow!</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-4">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Rating</label>
+                                        <div className="flex gap-3 justify-center text-4xl">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    type="button"
+                                                    onClick={() => setReviewRating(star)}
+                                                    className={`transition-transform active:scale-90 ${star <= reviewRating ? 'text-amber-400' : 'text-slate-200'}`}
+                                                >
+                                                    ★
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Your Feedback</label>
+                                        <textarea
+                                            required
+                                            value={reviewComment}
+                                            onChange={(e) => setReviewComment(e.target.value)}
+                                            placeholder="What did you learn? How was the session?"
+                                            className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-h-[120px] font-medium"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmittingReview}
+                                        className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all uppercase tracking-widest text-sm active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                                    </button>
+                                </>
+                            )}
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

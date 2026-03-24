@@ -14,7 +14,10 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
     const [bio, setBio] = useState(user.bio || '');
     const [specialization, setSpecialization] = useState(user.specialization || '');
     const [avatar, setAvatar] = useState(user.avatar || '');
-    const [skillsString, setSkillsString] = useState((user.skills || []).join(', '));
+    const [skills, setSkills] = useState<{ name: string, proficiency: 'Beginner' | 'Intermediate' | 'Advanced' }[]>(user.skills || []);
+    const [education, setEducation] = useState(user.education || '');
+    const [experience, setExperience] = useState(user.experience || '');
+    const [interestsString, setInterestsString] = useState((user.interests || []).join(', '));
     const [availabilityString, setAvailabilityString] = useState((user.availability || []).join(', '));
 
     const [isLoading, setIsLoading] = useState(false);
@@ -42,14 +45,17 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
         setError('');
         setSuccessMessage('');
 
-        const skills = skillsString.split(',').map(s => s.trim()).filter(s => s);
         const availability = availabilityString.split(',').map(a => a.trim()).filter(a => a);
+        const interests = interestsString.split(',').map(i => i.trim()).filter(i => i);
 
         const updates: Partial<User> = {
             name,
             bio,
             skills,
             avatar,
+            education,
+            experience,
+            interests,
             ...(user.role === 'mentor' && { specialization, availability })
         };
 
@@ -73,7 +79,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
 
                 <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start">
                     <div className="flex flex-col items-center gap-4">
-                        <UserAvatar name={user.name} role={user.role} size={120} className="rounded-2xl ring-4 ring-white shadow-xl" />
+                        <UserAvatar src={user.avatar} name={user.name} role={user.role} size={120} className="rounded-2xl ring-4 ring-white shadow-xl" />
                         <span className="px-3 py-1 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-full">
                             {user.role}
                         </span>
@@ -140,16 +146,49 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
                                 )}
 
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Skills</p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Skills & Proficiency</p>
                                     <div className="flex flex-wrap gap-2">
                                         {user.skills && user.skills.length > 0 ? (
-                                            user.skills.map(skill => (
-                                                <span key={skill} className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-200">
-                                                    {skill}
-                                                </span>
+                                            user.skills.map((skill, idx) => (
+                                                <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-xl border border-slate-200">
+                                                    <span className="text-xs font-bold text-slate-700">{skill.name}</span>
+                                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter ${
+                                                        skill.proficiency === 'Advanced' ? 'bg-blue-100 text-blue-700' :
+                                                        skill.proficiency === 'Intermediate' ? 'bg-emerald-100 text-emerald-700' :
+                                                        'bg-slate-200 text-slate-600'
+                                                    }`}>
+                                                        {skill.proficiency}
+                                                    </span>
+                                                </div>
                                             ))
                                         ) : (
                                             <span className="text-slate-500 text-sm">No skills listed</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Education</p>
+                                        <p className="text-sm text-slate-900">{user.education || 'Not specified'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Experience</p>
+                                        <p className="text-sm text-slate-900">{user.experience || 'Not specified'}</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Interests</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {user.interests && user.interests.length > 0 ? (
+                                            user.interests.map((interest, i) => (
+                                                <span key={i} className="px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg border border-rose-100">
+                                                    {interest}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-slate-500 text-sm">Not specified</span>
                                         )}
                                     </div>
                                 </div>
@@ -224,14 +263,82 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser }) => {
                                 )}
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Skills (comma separated)</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Education</label>
                                     <input
                                         type="text"
-                                        value={skillsString}
-                                        onChange={(e) => setSkillsString(e.target.value)}
+                                        value={education}
+                                        onChange={(e) => setEducation(e.target.value)}
                                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                        placeholder="e.g. React, Python, UI Design"
+                                        placeholder="e.g. BS in Computer Science, Harvard..."
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Experience</label>
+                                    <input
+                                        type="text"
+                                        value={experience}
+                                        onChange={(e) => setExperience(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                        placeholder="e.g. 2 years as Frontend Dev at Tech Corp..."
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Interests (comma separated)</label>
+                                    <input
+                                        type="text"
+                                        value={interestsString}
+                                        onChange={(e) => setInterestsString(e.target.value)}
+                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                        placeholder="e.g. Reading, Hiking, Open Source"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Skills & Proficiency</label>
+                                    <div className="space-y-3">
+                                        {skills.map((skill, index) => (
+                                            <div key={index} className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={skill.name}
+                                                    onChange={(e) => {
+                                                        const newSkills = [...skills];
+                                                        newSkills[index].name = e.target.value;
+                                                        setSkills(newSkills);
+                                                    }}
+                                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-900"
+                                                    placeholder="Skill name"
+                                                />
+                                                <select
+                                                    value={skill.proficiency}
+                                                    onChange={(e) => {
+                                                        const newSkills = [...skills];
+                                                        newSkills[index].proficiency = e.target.value as any;
+                                                        setSkills(newSkills);
+                                                    }}
+                                                    className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-900"
+                                                >
+                                                    <option value="Beginner">Beginner</option>
+                                                    <option value="Intermediate">Intermediate</option>
+                                                    <option value="Advanced">Advanced</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => setSkills(skills.filter((_, i) => i !== index))}
+                                                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => setSkills([...skills, { name: '', proficiency: 'Beginner' }])}
+                                            className="text-xs font-bold text-blue-600 hover:underline"
+                                        >
+                                            + Add Skill
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="pt-4 flex gap-3">

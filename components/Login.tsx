@@ -179,7 +179,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onGoogleLogin, onToggleRegister,
             ) : (
               <>
                 <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">
-                  {role === 'mentor' ? 'Mentor Login' : 'Mentee Login'}
+                  {role === 'mentor' ? 'Mentor Login' : role === 'admin' ? 'Admin Login' : 'Mentee Login'}
                 </h2>
                 <p className="text-slate-500 font-medium">Sign in to your dashboard</p>
               </>
@@ -263,7 +263,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onGoogleLogin, onToggleRegister,
                 <button
                   type="submit"
                   disabled={isLoading || !role}
-                  className={`w-full text-white font-bold py-4 px-4 rounded-2xl shadow-xl transition-all active:scale-[0.98] disabled:opacity-70 flex justify-center items-center gap-3 text-lg ${role === 'mentor' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/30'}`}
+                  className={`w-full text-white font-bold py-4 px-4 rounded-2xl shadow-xl transition-all active:scale-[0.98] disabled:opacity-70 flex justify-center items-center gap-3 text-lg ${
+                    role === 'mentor' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/30' : 
+                    role === 'admin' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/30' :
+                    'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/30'
+                  }`}
                 >
                   {isLoading ? (
                     <>
@@ -297,17 +301,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, onGoogleLogin, onToggleRegister,
                     <div className={!role ? "opacity-50 pointer-events-none" : ""}>
                       <GoogleLogin
                         onSuccess={async credentialResponse => {
+                          console.log("Google Login SUCCESS (Raw Response):", credentialResponse);
                           if (credentialResponse.credential && role) {
                             setIsLoading(true);
                             setError('');
-                            const res = await onGoogleLogin(credentialResponse.credential, role);
-                            if (res && !res.success) {
-                              setError(res.message || 'Google Login Failed');
+                            console.log("Attempting backend Google login with role:", role);
+                            try {
+                              const res = await onGoogleLogin(credentialResponse.credential, role);
+                              if (res && !res.success) {
+                                console.error("Backend Google Login Logic Failed:", res.message);
+                                setError(res.message || 'Google Login Failed');
+                                setIsLoading(false);
+                              }
+                            } catch (error) {
+                              console.error("Backend Google Login Exception:", error);
+                              setError('An error occurred during Google Sign-In');
                               setIsLoading(false);
                             }
+                          } else {
+                            console.warn("Google Login Success but missing credential or role", { hasCredential: !!credentialResponse.credential, role });
                           }
                         }}
                         onError={() => {
+                          console.error("Google Login Component Error Callback Triggered - Check console for library errors");
                           setError('Google Login Failed');
                         }}
                       />

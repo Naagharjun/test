@@ -1,6 +1,7 @@
 import React from 'react';
 
 interface UserAvatarProps {
+    src?: string;
     name?: string;
     role?: string;
     size?: number;          // pixel size (width & height)
@@ -11,12 +12,29 @@ interface UserAvatarProps {
  * A simple, clean human silhouette avatar.
  * Background colour is derived from the user's name so each person gets a consistent unique colour.
  */
-const UserAvatar: React.FC<UserAvatarProps> = ({ name = '', role, size = 40, className = '' }) => {
+const UserAvatar: React.FC<UserAvatarProps> = ({ src, name = '', role, size = 40, className = '' }) => {
     // Generate a stable hue from the name string
-    const hue = name.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 360;
+    const safeName = typeof name === 'string' ? name : '';
+    const hue = safeName.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 360;
 
     const bg = `hsl(${hue}, 55%, 88%)`;
     const fg = `hsl(${hue}, 55%, 35%)`;
+
+    if (src) {
+        return (
+            <img
+                src={src}
+                alt={name || 'User'}
+                width={size}
+                height={size}
+                className={`object-cover rounded-full ${className}`}
+                style={{ width: size, height: size }}
+                onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                }}
+            />
+        );
+    }
 
     return (
         <svg

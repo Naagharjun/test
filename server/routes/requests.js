@@ -1,6 +1,7 @@
 const express = require('express');
 const ConnectionRequest = require('../models/ConnectionRequest');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 const router = express.Router();
 
@@ -32,13 +33,20 @@ router.post('/', async (req, res) => {
     try {
         const { menteeId, mentorId, menteeName, mentorName, selectedSlot } = req.body;
 
+        // Check if there is already an accepted request between this pair
+        const existingAcceptance = await ConnectionRequest.findOne({
+            menteeId,
+            mentorId,
+            status: 'accepted'
+        });
+
         const newRequest = new ConnectionRequest({
             menteeId,
             mentorId,
             menteeName,
             mentorName,
             selectedSlot,
-            status: 'pending'
+            status: existingAcceptance ? 'accepted' : 'pending'
         });
 
         await newRequest.save();
@@ -52,6 +60,26 @@ router.post('/', async (req, res) => {
                     { $inc: { "sessionSlots.$.available": -1 } }
                 );
             }
+        }
+
+        // Create notification for the mentor
+        await Notification.create({
+            userId: mentorId,
+            message: existingAcceptance 
+                ? `New connection request from ${menteeName} (Automatically Accepted)`
+                : `New connection request from ${menteeName}`,
+            type: 'request',
+            relatedId: newRequest._id.toString()
+        });
+
+        // If auto-accepted, also notify the mentee
+        if (existingAcceptance) {
+            await Notification.create({
+                userId: menteeId,
+                message: `Your request with ${mentorName} was automatically accepted due to your existing connection.`,
+                type: 'status_change',
+                relatedId: newRequest._id.toString()
+            });
         }
 
         const responseMapping = {
@@ -127,6 +155,14 @@ router.patch('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Request not found' });
         }
 
+        // Create notification for the mentee
+        await Notification.create({
+            userId: updatedRequest.menteeId,
+            message: `Your request with ${updatedRequest.mentorName} has been ${status}`,
+            type: 'status_change',
+            relatedId: updatedRequest._id.toString()
+        });
+
         const responseMapping = {
             id: updatedRequest._id.toString(),
             menteeId: updatedRequest.menteeId.toString(),
@@ -153,6 +189,15 @@ router.delete('/:id', async (req, res) => {
         if (!deleted) {
             return res.status(404).json({ message: 'Request not found' });
         }
+
+        // Notify mentor that the request was cancelled
+        await Notification.create({
+            userId: deleted.mentorId,
+            message: `${deleted.menteeName} has cancelled their connection request.`,
+            type: 'status_change',
+            relatedId: deleted._id.toString()
+        });
+
         res.status(200).json({ message: 'Request cancelled successfully' });
     } catch (error) {
         console.error('Delete Request Err:', error);

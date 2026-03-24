@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, ConnectionRequest } from '../types';
 import { api } from '../services/api';
+import UserAvatar from './UserAvatar';
 
 const Requests: React.FC<{ user: User | null }> = ({ user }) => {
     const [requests, setRequests] = useState<ConnectionRequest[]>([]);
@@ -58,9 +59,7 @@ const Requests: React.FC<{ user: User | null }> = ({ user }) => {
                         {requests.map((request) => (
                             <div key={request.id} className="flex flex-col md:flex-row gap-6 p-6 rounded-3xl bg-slate-50 border border-slate-100 items-center transition-all hover:bg-white hover:shadow-md">
                                 <div className="flex items-center gap-4 flex-1">
-                                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-white">
-                                        {isMentor ? '👨‍🎓' : '👩‍🏫'}
-                                    </div>
+                                    <UserAvatar name={isMentor ? request.menteeName : request.mentorName} role={isMentor ? 'mentee' : 'mentor'} size={64} className="rounded-2xl shadow-sm border border-white" />
                                     <div>
                                         <h4 className="text-lg font-bold text-slate-900">
                                             {isMentor ? request.menteeName : request.mentorName}

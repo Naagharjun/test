@@ -1,0 +1,10 @@
+node_modules
+dist
+.env.local
+.git
+uploads
+brain
+tmp
+.gemini
+package-lock.json
+server/package-lock.json

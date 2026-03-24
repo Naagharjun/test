@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { User, ConnectionRequest } from '../types';
 import { api } from '../services/api';
+import { calculateBadges } from '../utils/badges';
+import BadgeList from './BadgeList';
 
-const MentorDashboard: React.FC<{ user: User | null }> = ({ user }) => {
+const MentorDashboard: React.FC<{
+    user: User | null;
+    onTabChange: (tab: string) => void;
+    onSelectConnection: (id: string) => void;
+}> = ({ user, onTabChange, onSelectConnection }) => {
     const [requests, setRequests] = useState<ConnectionRequest[]>([]);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [resources, setResources] = useState<any[]>([]);
+    const [isLoadingReviews, setIsLoadingReviews] = useState(true);
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -15,7 +24,29 @@ const MentorDashboard: React.FC<{ user: User | null }> = ({ user }) => {
                 console.error("Failed to load requests", err);
             }
         }
+        const fetchReviews = async () => {
+            if (!user) return;
+            try {
+                const data = await api.reviews.getReviews(user.id);
+                setReviews(data);
+            } catch (err) {
+                console.error("Failed to load reviews", err);
+            } finally {
+                setIsLoadingReviews(false);
+            }
+        }
+        const fetchResources = async () => {
+            if (!user) return;
+            try {
+                const data = await api.resources.getResources(user.id);
+                setResources(data);
+            } catch (err) {
+                console.error("Failed to load resources", err);
+            }
+        }
         fetchRequests();
+        fetchReviews();
+        fetchResources();
     }, [user]);
 
     const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -33,9 +64,21 @@ const MentorDashboard: React.FC<{ user: User | null }> = ({ user }) => {
     };
 
     const acceptedRequests = requests.filter(r => r.status === 'accepted');
+    const badges = user ? calculateBadges(user, acceptedRequests.length, reviews, resources) : [];
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Badges Header */}
+            {badges.length > 0 && (
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 shadow-xl shadow-blue-500/20 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                    <div>
+                        <h4 className="text-white font-black text-xl mb-1 tracking-tight">Your Achievements</h4>
+                        <p className="text-blue-100 text-xs font-bold uppercase tracking-widest opacity-80">Keep up the great work, {user?.name.split(' ')[0]}!</p>
+                    </div>
+                    <BadgeList badges={badges} />
+                </div>
+            )}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all group">
@@ -89,8 +132,14 @@ const MentorDashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                             <h4 className="text-base font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">Career Consultation</h4>
                                             <p className="text-xs font-bold text-slate-400 mt-1 mb-3 uppercase tracking-wider">with {r.menteeName} • {d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                                             <div className="flex gap-3">
-                                                <button className="px-5 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl hover:bg-blue-700 transition-all uppercase tracking-[0.1em] shadow-lg shadow-blue-500/20 active:scale-95">
-                                                    Start Session
+                                                <button
+                                                    onClick={() => {
+                                                        onSelectConnection(r.id);
+                                                        onTabChange('chat');
+                                                    }}
+                                                    className="px-5 py-2 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-xl hover:bg-emerald-200 transition-all uppercase tracking-[0.1em] active:scale-95"
+                                                >
+                                                    Message
                                                 </button>
                                                 <button
                                                     onClick={() => handleCancel(r.id)}
@@ -130,6 +179,41 @@ const MentorDashboard: React.FC<{ user: User | null }> = ({ user }) => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Feedback Section */}
+                <div className="bg-white/70 backdrop-blur-md p-8 rounded-[2.5rem] border border-slate-200/60 shadow-lg relative overflow-hidden h-full">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-8">Mentee Feedback</h3>
+
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {isLoadingReviews ? (
+                            <p className="text-sm text-slate-400 font-medium py-8 text-center animate-pulse">Loading feedback...</p>
+                        ) : reviews.length === 0 ? (
+                            <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-3xl">
+                                <span className="text-4xl mb-4 block">💬</span>
+                                <p className="text-sm text-slate-400 font-medium">No reviews yet. Keep mentoring to build your reputation!</p>
+                            </div>
+                        ) : (
+                            reviews.map((rev) => (
+                                <div key={rev._id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="font-bold text-slate-900 text-sm">{rev.menteeName}</h4>
+                                        <div className="flex text-amber-400 text-xs">
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                                <span key={s} className={s <= rev.rating ? 'opacity-100' : 'opacity-20'}>★</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-slate-600 leading-relaxed italic">"{rev.comment}"</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase tracking-wider">
+                                        {new Date(rev.createdAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>

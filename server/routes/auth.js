@@ -122,12 +122,15 @@ router.post('/login', async (req, res) => {
 router.post('/google', async (req, res) => {
     try {
         const { googlePayload, role } = req.body;
+        console.log("Backend received Google auth request:", { role, hasPayload: !!googlePayload });
 
         if (!googlePayload || !googlePayload.email) {
+            console.error("Invalid Google Payload received:", googlePayload);
             return res.status(400).json({ message: "Invalid Google Payload" });
         }
 
         const { email, name, picture } = googlePayload;
+        console.log("Processing Google Login for:", email);
 
         let user = await User.findOne({ email });
 
@@ -172,8 +175,8 @@ router.post('/google', async (req, res) => {
         res.status(200).json({ user: userResponse, token });
 
     } catch (error) {
-        console.error("Google Auth err:", error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("CRITICAL ERROR in /google route:", error);
+        res.status(500).json({ message: 'Server error during Google authentication', details: error.message });
     }
 });
 

@@ -5,8 +5,14 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     role: { type: String, enum: ['mentor', 'mentee', 'admin'], required: true },
     avatar: { type: String },
-    skills: [{ type: String }],
+    skills: [{
+        name: { type: String },
+        proficiency: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], default: 'Beginner' }
+    }],
     bio: { type: String },
+    education: { type: String },
+    experience: { type: String },
+    interests: [{ type: String }],
     password: { type: String }, // Optional since Google auth might not use it immediately
 
     specialization: { type: String },

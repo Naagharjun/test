@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import UserAvatar from './UserAvatar';
+import NotificationBell from './NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,9 +10,11 @@ interface LayoutProps {
   onLogout: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  unreadCount?: number;
+  hasConnections?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activeTab, setActiveTab }) => {
+const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activeTab, setActiveTab, unreadCount, hasConnections }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -28,12 +31,16 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activeTab, se
     ? [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
       { id: 'sessions', label: 'My Sessions', icon: '📅' },
-      { id: 'requests', label: 'Requests', icon: '📩' }, // Placeholder for mentor requests
+      { id: 'requests', label: 'Requests', icon: '📩' },
+      { id: 'chat', label: 'Chat', icon: '💬' },
+      { id: 'resource-hub', label: 'Resource Hub', icon: '📚' },
     ]
     : [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
       { id: 'mentors', label: 'Find Mentors', icon: '🔍' },
       { id: 'sessions', label: 'My Sessions', icon: '📅' },
+      { id: 'chat', label: 'Chat', icon: '💬' },
+      { id: 'resource-hub', label: 'Resource Hub', icon: '📚' },
     ];
 
   const formattedDate = currentTime.toLocaleDateString('en-US', {
@@ -66,13 +73,20 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activeTab, se
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all ${activeTab === item.id
+              className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl text-sm font-bold transition-all ${activeTab === item.id
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                 : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                 }`}
             >
-              <span className={`text-xl ${activeTab === item.id ? 'brightness-0 invert' : ''}`}>{item.icon}</span>
-              {item.label}
+              <div className="flex items-center gap-4">
+                <span className={`text-xl ${activeTab === item.id ? 'brightness-0 invert' : ''}`}>{item.icon}</span>
+                {item.label}
+              </div>
+              {item.id === 'chat' && unreadCount ? unreadCount > 0 && (
+                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm animate-pulse">
+                  {unreadCount}
+                </span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -112,10 +126,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, activeTab, se
                     <p className="text-[10px] font-bold text-slate-400 mt-1.5 leading-none bg-slate-50 px-2 py-0.5 rounded-full inline-block uppercase tracking-wider">{user.role}</p>
                   </div>
                   <div className="relative">
-                    <UserAvatar name={user.name} role={user.role} size={44} className="rounded-full ring-2 ring-blue-500/10 shadow-lg" />
+                    <UserAvatar src={user.avatar} name={user.name} role={user.role} size={44} className="rounded-full ring-2 ring-blue-500/10 shadow-lg" />
                     <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
                   </div>
                 </button>
+
+                <div className="h-10 w-px bg-slate-200"></div>
+
+                <NotificationBell userId={user.id} />
 
                 <div className="h-10 w-px bg-slate-200"></div>
 
