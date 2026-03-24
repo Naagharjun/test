@@ -48,10 +48,17 @@ if (process.env.NODE_ENV !== 'production') {
             console.error("Critical: Server failed to start due to DB issue:", error.message);
         });
 } else {
-    // Production / Serverless: Just trigger the connection (it's a singleton)
-    connectDB().catch(err => console.error("Vercel production DB connection triggered:", err.message));
+    // In production (Vercel), we connect outside or rely on serverless handled connection
+async function connectDB() {
+  try {
+    await mongoose.connect(MONGO_URI);
+    console.log("✅ MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB error:", err);
+  }
 }
 
+connectDB();}
 
 module.exports = app;
 
