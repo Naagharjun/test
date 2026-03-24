@@ -41,7 +41,7 @@ if (!MONGO_URI) {
 }
 
 if (process.env.NODE_ENV !== 'production') {
-    mongoose.connect(MONGO_URI, {
+    await mongoose.connect(MONGO_URI, {
         serverApi: {
             version: '1',
             strict: true,
@@ -59,7 +59,7 @@ if (process.env.NODE_ENV !== 'production') {
         });
 } else {
     // In production (Vercel), we connect outside or rely on serverless handled connection
-    mongoose.connect(MONGO_URI).catch(err => console.error("MongoDB production error:", err));
+    await mongoose.connect(MONGO_URI).catch(err => console.error("MongoDB production error:", err));
 }
 
 module.exports = app;
