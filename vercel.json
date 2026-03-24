@@ -21,7 +21,7 @@
       "dest": "server/index.js"
     },
     {
-      "src": "/(.*)",
+      "src": "/((?!assets/|api/|uploads/).*)",
       "dest": "/index.html"
     }
   ],
