@@ -33,6 +33,7 @@ app.get('/api/db-status', require('./api/db_status'));
 
 // Database Connection
 const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URL;
 const connectDB = require('./utils/db');
 
 // In production (Vercel), we don't call app.listen() at the top level
