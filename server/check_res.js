@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: '../.env.local' });
-
+require('dotenv').config();
 const MONGO_URI = process.env.MONGO_URL;
 
 async function check() {

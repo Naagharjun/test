@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
+require('dotenv').config();
 
 const authRoutes = require('./routes/auth.js');
 const requestRoutes = require('./routes/requests.js');

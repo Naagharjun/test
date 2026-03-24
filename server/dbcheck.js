@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: '../.env.local' });
+require('dotenv').config();
 const User = require('./models/User');
 
 mongoose.connect(process.env.MONGO_URL)

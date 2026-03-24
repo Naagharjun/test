@@ -1,8 +1,7 @@
 const { MongoClient } = require("mongodb");
-require('dotenv').config({ path: require('path').join(__dirname, '../.env.local') });
-
+require('dotenv').config();
 // Use environment variable instead of hardcoded credentials
-const uri = process.env.MONGO_URI;
+const uri = process.env.MONGO_URL;
 
 const client = new MongoClient(uri);
 

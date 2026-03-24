@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
-
+require('dotenv').config();
 async function debugDB() {
     try {
         const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/mentorlink';
